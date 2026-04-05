@@ -1,0 +1,280 @@
+**LABORATORIO II: GESTIÓN DE PAQUETES, TAREAS Y DISCOS**
+
+
+
+***Alumno:** Anervin*
+
+***Matrícula:** 20251443*
+
+***Materia:** Sistemas Operativos 3*
+
+
+
+1\. Inicio del laboratorio (Muestro fecha y hora)
+
+
+
+date
+
+
+
+#### **=======================================================**
+
+#### **PRÁCTICA 1: REPOSITORIOS Y BASHTOP**
+
+#### **=======================================================**
+
+
+
+**2. Actualizar los repositorios del sistema (Update \& Upgrade)**
+
+
+
+sudo dnf update -y
+
+sudo dnf upgrade -y
+
+
+
+**3. Enumerar los repositorios actualmente en uso**
+
+
+
+dnf repolist
+
+
+
+**4. Buscar la herramienta "bashtop" en el caché de los repositorios**
+
+
+
+dnf search bashtop
+
+
+
+**5. Instalar el repositorio EPEL e instalar la herramienta Bashtop**
+
+
+
+sudo dnf install epel-release -y
+
+sudo dnf install bashtop -y
+
+
+
+**6. Ejecutar la herramienta para mostrar su funcionamiento (Salir con 'q')**
+
+
+
+bashtop
+
+
+
+**7. Desinstalar la herramienta bashtop**
+
+
+
+sudo dnf remove bashtop -y
+
+
+
+**8. Eliminar dependencias asociadas y limpiar el sistema**
+
+
+
+sudo dnf autoremove -y
+
+
+
+#### **=======================================================**
+
+#### **PRÁCTICA 2: CRON Y AT (TAREAS PROGRAMADAS)**
+
+#### **=======================================================**
+
+
+
+**9. Configurar tareas programadas en el Crontab usando Nano**
+
+
+
+sudo nano crontab -e
+
+
+
+\--- DENTRO DE NANO ---
+
+
+
+0 23 \* \* \* /usr/bin/dnf upgrade -y
+
+0 3 \* \* 0 /usr/sbin/reboot
+
+
+
+(Guardar con Ctrl+O, Enter, salir con Ctrl+X)
+
+\----------------------
+
+
+
+**10. Verificar el contenido de /tmp antes de la ejecución**
+
+
+
+ls -l /tmp
+
+
+
+**11. Crear tarea programada con "at" para limpiar /tmp en 1 minuto**
+
+
+
+sudo at now + 1 minute
+
+
+
+\--- DENTRO DEL PROMPT (at>) ---
+
+
+
+rm -rf /tmp/\*
+
+
+
+(Ctrl+D para guardar y salir)
+
+\-------------------------------
+
+
+
+**12. Esperar el tiempo programado y verificar la limpieza de /tmp**
+
+
+
+ls -l /tmp
+
+
+
+#### **=======================================================**
+
+#### **PRÁCTICA 3: GESTIÓN DE DISCOS Y MONTURAS**
+
+#### **=======================================================**
+
+
+
+**13. Identificar el nuevo disco de 20GB agregado a la VM**
+
+
+
+lsblk
+
+
+
+**14. Crear la partición en el disco (usualmente /dev/sdb)**
+
+
+
+sudo fdisk /dev/sdb
+
+
+
+\--- DENTRO DE FDISK ---
+
+n (nueva partición)
+
+p (primaria)
+
+1 (número)
+
+Enter (primer sector)
+
+Enter (último sector)
+
+w (escribir cambios y salir)
+
+\-----------------------
+
+
+
+**15. Formatear la partición con el sistema de archivos ext4**
+
+
+
+sudo mkfs.ext4 /dev/sdb1
+
+
+
+**16. Crear directorio en el Escritorio y realizar el primer montaje**
+
+
+
+mkdir -p \~/Escritorio/Disco\_20GB
+
+sudo mount /dev/sdb1 \~/Escritorio/Disco\_20GB
+
+
+
+**17. Crear el archivo solicitado utilizando el editor Nano**
+
+
+
+cd \~/Escritorio/Disco\_20GB
+
+sudo nano OnelPelegrino.txt
+
+
+
+\--- DENTRO DE NANO ---
+
+
+
+Escribo: "Archivo de prueba para la práctica de monturas - Anervin"
+
+
+
+(Guardar con Ctrl+O, Enter, salir con Ctrl+X)
+
+\----------------------
+
+
+
+**18. Verificar creación, salir del directorio y desmontar la unidad**
+
+
+
+ls
+
+cd \~
+
+sudo umount \~/Escritorio/Disco\_20GB
+
+
+
+**19. Realizar el segundo montaje en el directorio /mnt**
+
+
+
+sudo mount /dev/sdb1 /mnt
+
+
+
+**20. Ingresar a /mnt y comprobar la persistencia del archivo**
+
+
+
+cd /mnt
+
+ls
+
+cat OnelPelegrino.txt
+
+
+
+**21. Fin del laboratorio (Muestro fecha y hora final)**
+
+
+
+date
+
