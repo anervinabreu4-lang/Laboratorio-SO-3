@@ -1,0 +1,161 @@
+=======================================================
+LABORATORIO III: SERVICIOS, SEGURIDAD Y MONITOREO
+=======================================================
+
+*Alumno: Anervin Abreu Aybar*
+*Matrícula: 2025-1443*
+*Materia: Sistemas Operativos 3*
+
+1. Inicié el laboratorio (Mostré fecha y hora)
+
+date
+
+=======================================================
+PRÁCTICA 1: CONECTIVIDAD SEGURA (SSH)
+=======================================================
+
+2. Habilité y arranqué el servicio SSH en el servidor Linux
+
+sudo systemctl enable sshd
+sudo systemctl start sshd
+
+3. Verifiqué que el servicio SSH estuviera activo y escuchando
+
+sudo systemctl status sshd
+
+4. (EN MI HOST WINDOWS) Abrí PowerShell y generé el par de llaves RSA
+
+ssh-keygen -t rsa -b 4096
+
+--- DENTRO DE POWERSHELL ---
+(Presioné Enter para aceptar la ruta por defecto: C:\Users\Usuario\.ssh\id_rsa)
+(Presioné Enter dos veces para dejar la contraseña o passphrase en blanco)
+-----------------------------
+
+5. (EN MI HOST WINDOWS) Transferí la llave pública al servidor Oracle Linux
+(Nota: Reemplacé 'ip_del_servidor' por la IP de mi servidor real)
+
+scp $env:USERPROFILE\.ssh\id_rsa.pub oracle_20251443@ip_del_servidor:~/
+
+6. (EN EL SERVIDOR LINUX) Creé el directorio oculto .ssh si no existía y establecí sus permisos
+
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+
+7. (EN EL SERVIDOR LINUX) Agregué la llave pública al archivo authorized_keys
+
+cat ~/id_rsa.pub >> ~/.ssh/authorized_keys
+
+8. (EN EL SERVIDOR LINUX) Ajusté los permisos del archivo de llaves autorizadas
+
+chmod 600 ~/.ssh/authorized_keys
+
+9. (EN MI HOST WINDOWS) Validé el acceso SSH automatizado (sin necesidad de contraseña)
+
+ssh oracle_20251443@ip_del_servidor
+
+=======================================================
+PRÁCTICA 2: IDS SNORT 3 (DETECCIÓN DE INTRUSOS)
+=======================================================
+
+10. Instalé los repositorios y herramientas de compilación necesarias
+
+sudo dnf install epel-release -y
+sudo dnf groupinstall "Development Tools" -y
+sudo dnf install cmake libdaq libdaq-devel pcre pcre-devel libpcap libpcap-devel zlib-devel lua-devel hwloc-devel openssl-devel -y
+
+11. Descargué y extraje el código fuente de Snort 3
+
+wget https://github.com/snort3/snort3/archive/refs/tags/3.1.74.0.tar.gz
+tar -xzvf 3.1.74.0.tar.gz
+cd snort3-3.1.74.0
+
+12. Configuré y compilé Snort 3 en el sistema
+
+./configure_cmake.sh --prefix=/usr/local/snort
+cd build
+make
+sudo make install
+
+13. Creé el directorio de reglas y el archivo local.rules
+
+sudo mkdir -p /usr/local/snort/etc/rules
+sudo touch /usr/local/snort/etc/rules/local.rules
+
+14. Edité el archivo local.rules para agregar las reglas de detección solicitadas
+
+sudo nano /usr/local/snort/etc/rules/local.rules
+
+--- DENTRO DE NANO ---
+# Regla para ICMP (Ping)
+alert icmp any any -> $HOME_NET any (msg:"Detectado trafico ICMP"; sid:1000001; rev:1;)
+# Regla para FTP (Puerto 21)
+alert tcp any any -> $HOME_NET 21 (msg:"Detectado trafico FTP"; sid:1000002; rev:1;)
+# Regla para SSH (Puerto 22)
+alert tcp any any -> $HOME_NET 22 (msg:"Detectado trafico SSH"; sid:1000003; rev:1;)
+# Regla para HTTP (Puerto 80)
+alert tcp any any -> $HOME_NET 80 (msg:"Detectado trafico HTTP"; sid:1000004; rev:1;)
+
+(Guardé con Ctrl+O, Enter, y salí con Ctrl+X)
+----------------------
+
+15. Edité el archivo snort.lua para incluir mis reglas locales
+
+sudo nano /usr/local/snort/etc/snort/snort.lua
+
+--- DENTRO DE NANO ---
+(Busqué la sección 'ips =' y agregué la ruta de local.rules)
+ips =
+{
+    mode = tap,
+    variables = default_variables,
+    include = "/usr/local/snort/etc/rules/local.rules"
+}
+
+(Guardé con Ctrl+O, Enter, y salí con Ctrl+X)
+----------------------
+
+16. Ejecuté Snort en modo consola para verificar las alertas en tiempo real
+
+sudo /usr/local/snort/bin/snort -c /usr/local/snort/etc/snort/snort.lua -i eth0 -A alert_fast
+
+(Para detener la captura, presioné Ctrl+C)
+
+=======================================================
+PRÁCTICA 3: SERVIDOR DE IMPRESIÓN CUPS
+=======================================================
+
+17. Instalé el servicio CUPS y el paquete cups-pdf para la impresora virtual
+
+sudo dnf install cups cups-pdf -y
+
+18. Inicié y habilité el servicio CUPS para que arranque con el sistema
+
+sudo systemctl start cups
+sudo systemctl enable cups
+
+19. Permití el tráfico de impresión en el Firewall (Puerto 631)
+
+sudo firewall-cmd --permanent --add-port=631/tcp
+sudo firewall-cmd --permanent --add-port=631/udp
+sudo firewall-cmd --reload
+
+20. Configuré CUPS desde la terminal para permitir la administración remota
+
+sudo cupsctl --remote-admin --remote-any --share-printers
+
+21. Reinicié el servicio para aplicar las nuevas directivas
+
+sudo systemctl restart cups
+
+22. Verifiqué el estado del servicio y comprobé los puertos a la escucha
+
+sudo systemctl status cups
+sudo ss -tuln | grep 631
+
+23. (DESDE MI NAVEGADOR EN EL HOST) Accedí a la interfaz web de administración
+(Ingresé en mi navegador web: https://ip_del_servidor:631)
+
+24. Finalicé el laboratorio (Mostré fecha y hora final)
+
+date
