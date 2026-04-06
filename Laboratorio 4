@@ -1,0 +1,159 @@
+
+Laboratorio IV : Administracion de Servicios de Red
+
+Alumno: Anervin Abreu Aybar
+Matrícula: 20251443
+Materia: Redes de Información
+
+====================================================================
+PRÁCTICA 1: SERVIDOR WEB APACHE (PUERTOS 80 Y 8080)
+====================================================================
+
+date 
+
+1. Instalar Apache y crear las carpetas
+
+sudo dnf install httpd -y
+
+sudo mkdir -p /var/www/sitio80
+
+sudo mkdir -p /var/www/sitio8080
+
+2. Crear la página del Puerto 80
+
+sudo nano /var/www/sitio80/index.html
+
+<h1>Hola Mundo</h1>
+
+
+3. Crear la página del Puerto 8080
+
+sudo nano /var/www/sitio8080/index.html
+
+<h1>Anervin - 20251443 - Redes de Informacion</h1>
+
+4. Configurar los Virtual Hosts
+
+sudo nano /etc/httpd/conf.d/practica1.conf
+
+Listen 8080
+
+<VirtualHost \*:80>
+
+DocumentRoot "/var/www/sitio80"
+
+</VirtualHost>
+
+<VirtualHost \*:8080>
+
+DocumentRoot "/var/www/sitio8080"
+
+</VirtualHost>
+
+5. Aplicar Permisos de Lectura a las carpetas
+
+sudo chmod -R 755 /var/www/sitio80
+
+sudo chmod -R 755 /var/www/sitio8080
+
+6. Configurar Firewall (Abrir Puertos)
+
+sudo firewall-cmd --permanent --add-port=80/tcp
+
+sudo firewall-cmd --permanent --add-port=8080/tcp
+
+sudo firewall-cmd --reload
+
+7. Desactivar protección estricta temporal (SELinux)
+
+sudo setenforce 0
+
+8. Iniciar el servicio y aplicar cambios
+
+sudo systemctl enable --now httpd
+
+sudo systemctl restart httpd
+
+date
+
+
+=======================================
+PRÁCTICA 3: SERVIDOR DE IMPRESIÓN CUPS
+=======================================
+
+1. Inicio de la práctica (Mostrar fecha y hora)
+
+date
+
+2. Verificación de la dirección IP y conectividad
+
+ip a
+ping -c 3 8.8.8.8
+
+3. Instalación de CUPS y el generador de PDF
+
+sudo dnf install cups cups-pdf -y
+
+4. Verificar el estado inicial del servicio
+
+sudo systemctl status cups
+
+5. Configurar el acceso remoto al servidor
+
+sudo nano /etc/cups/cupsd.conf
+
+Cambiar Listen localhost:631 por: Port 631
+
+Debajo de Order allow,deny en <Location /> agregar: Allow all
+
+6. Crear directorio de salida y asignar permisos totales
+
+sudo mkdir -p /var/spool/cups-pdf/ANONYMOUS
+sudo chmod 777 /var/spool/cups-pdf/ANONYMOUS
+
+7. Configuración de Seguridad y verificación de SELinux
+
+sudo setenforce 0
+getenforce
+
+8. Configuración de Firewall (Abrir y verificar puerto 631)
+
+sudo firewall-cmd --permanent --add-port=631/tcp
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-ports
+
+9. Iniciar, habilitar y verificar el servicio
+
+sudo systemctl enable --now cups
+sudo systemctl restart cups
+sudo systemctl status cups
+
+10. Listar drivers disponibles para confirmar el controlador PDF
+
+lpinfo -m | grep -i pdf
+
+11. Crear la Impresora Virtual PDF y habilitarla
+
+sudo lpadmin -p Impresora_ITLA -E -v cups-pdf:/ -m CUPS-PDF_opt.ppd
+
+12. Verificar que la impresora se ha creado correctamente en el sistema
+
+lpstat -p
+lpstat -v
+
+13. CONEXIÓN DESDE WINDOWS
+
+http://TU_IP:631/printers/Impresora_ITLA
+Driver: Generic -> Generic / MS Publisher Color Printer
+
+14. Verificación de la cola de impresión
+
+lpstat -o
+
+15. Verificación del archivo generado (Después de imprimir desde Word)
+
+ls -l /var/spool/cups-pdf/ANONYMOUS
+
+16. Fin de la práctica (Mostrar fecha y hora final)
+
+date
