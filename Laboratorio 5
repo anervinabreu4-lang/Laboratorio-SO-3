@@ -1,0 +1,346 @@
+Laboratorio V: Alta Disponibilidad y Clustering
+
+ALUMNO: Anervin Abreu Aybar
+MATRICULA: 2025-1443
+
+=======================================
+ PRACTICA 1 – Sincronización con Rsync
+========================================
+
+1. Primero instalo rsync en ambos servidores
+sudo dnf install rsync -y
+
+2. En el servidor principal creo la carpeta a sincronizar
+
+mkdir /home/nolberto/syncfolder
+cd /home/nolberto/syncfolder
+
+3. Creo 100 archivos de prueba
+for i in {1..100}; do touch file$i.txt; done
+
+4. Verifico que los 100 archivos fueron creados
+ls | wc -l
+
+5. Genero clave SSH para conexión sin contraseña
+ssh-keygen
+
+6. Copio la clave al servidor secundario (192.168.0.198)
+ssh-copy-id nolberto@192.168.0.198
+
+7. Realizo una sincronización manual de prueba
+rsync -avz /home/nolberto/syncfolder/ nolberto@192.168.0.200:/home/nolberto/syncfolder/
+
+8. Creo un script para automatizar la sincronización
+nano /home/nolberto/sync.sh
+
+Contenido del script:
+
+#!/bin/bash
+rsync -avz /home/nolberto/syncfolder/ nolberto@192.168.0.198:/home/nolberto/syncfolder/
+# Doy permisos de ejecución
+chmod +x /home/nolberto/sync.sh
+
+9. Programo el cron para que se ejecute cada minuto
+crontab -e
+
+Agregar:
+
+* * * * * /home/nolberto/sync.sh
+# Creo un archivo nuevo para probar el cron
+touch /home/nolberto/syncfolder/prueba_cron.txt
+
+Después de 1 minuto verificas en 192.168.0.198.
+
+
+================================
+Practica 2
+================================
+
+
+10. Instalar paquetes del cluster
+En los dos servidores
+
+sudo dnf install pcs pacemaker corosync resource-agents -y
+
+11. Activar el servicio pcsd
+
+En los dos servidores
+
+sudo systemctl enable pcsd --now
+
+Verificar:
+
+systemctl status pcsd
+
+Debe decir active (running).
+
+12. Configurar contraseña del usuario del cluster
+
+Pacemaker usa el usuario hacluster.
+
+En los dos servidores
+
+sudo passwd hacluster
+
+Pon la misma contraseña en ambos.
+
+Ejemplo:
+
+cluster123
+13. Autenticar los nodos
+
+Desde server1
+
+sudo pcs host auth server1 server2 -u hacluster
+
+Escribe la contraseña que pusiste.
+
+Debe mostrar algo como:
+
+server1: Authorized
+server2: Authorized
+
+14. Crear el cluster
+
+Desde server1
+
+sudo pcs cluster setup mycluster server1 server2
+
+15. Iniciar el cluster
+
+Desde server1
+
+sudo pcs cluster start --all
+
+Habilitar que inicie siempre:
+
+sudo pcs cluster enable --all
+
+16. Verificar estado
+pcs status
+
+Debe mostrar:
+
+2 nodes configured
+2 nodes online
+
+17. Desactivar STONITH (importante en máquinas virtuales)
+sudo pcs property set stonith-enabled=false
+
+18. Ignorar quorum (solo para laboratorio)
+sudo pcs property set no-quorum-policy=ignore
+
+19. Crear la IP flotante
+
+Desde server1
+
+sudo pcs resource create VirtualIP ocf:heartbeat:IPaddr2 ip=192.168.0.200 cidr_netmask=24 op monitor interval=30s
+
+20. Verificar recurso
+pcs status
+
+Debe mostrar algo como:
+
+VirtualIP (ocf::heartbeat:IPaddr2): Started server1
+
+21. Verificar la IP flotante
+
+En cualquiera de los servidores:
+
+ip a
+
+Debe aparecer:
+
+192.168.0.200
+
+22. Prueba para el video
+
+Desde tu computadora host (Windows) abre CMD:
+
+ping 192.168.0.200
+
+Debe responder.
+
+23. Prueba de alta disponibilidad
+
+Mientras el ping está corriendo.
+
+En server1
+
+sudo reboot
+
+La IP flotante pasará automáticamente a server2.
+
+El ping debe mantenerse.
+
+24. Segunda prueba
+
+Cuando server1 vuelva a iniciar.
+
+Reinicia server2
+
+sudo reboot
+
+La IP flotante volverá a server1.
+
+Comandos que debes mostrar en el video
+
+Mostrar estado del cluster:
+
+pcs status
+
+Mostrar nodos:
+
+pcs cluster status
+
+Mostrar recursos:
+
+pcs resource show
+
+Mostrar IP:
+
+ip a
+
+================================
+Practica 3
+================================
+
+El navegador accederá siempre a:
+
+http://192.168.0.200
+
+1. Instalar paquetes (en los DOS servidores)
+sudo dnf install httpd keepalived -y
+
+Activar Apache:
+
+sudo systemctl enable --now httpd
+
+Verificar:
+
+systemctl status httpd
+
+2️. Crear la página web de cada servidor
+Server1
+sudo nano /var/www/html/index.html
+
+Contenido:
+
+<h1>SERVER 1 - ACTIVO</h1>
+Server2
+sudo nano /var/www/html/index.html
+
+Contenido:
+
+<h1>SERVER 2 - ACTIVO</h1>
+
+3️. Abrir firewall
+
+En los dos servidores:
+
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=high-availability
+sudo firewall-cmd --reload
+
+4️ Configurar Keepalived
+
+Archivo:
+
+/etc/keepalived/keepalived.conf
+SERVER1 (MASTER)
+sudo nano /etc/keepalived/keepalived.conf
+
+Config:
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface enp0s3
+    virtual_router_id 51
+    priority 101
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass 1234
+    }
+
+    virtual_ipaddress {
+        192.168.0.200
+    }
+}
+SERVER2 (BACKUP)
+sudo nano /etc/keepalived/keepalived.conf
+
+Config:
+
+global_defs {
+   notification_email_from admin@itla.edu.do
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority 101
+    advert_int 1
+    
+    unicast_src_ip 192.168.0.199
+    unicast_peer {
+        192.168.0.198
+    }
+
+    virtual_ipaddress {
+        192.168.0.200/24
+    }
+}
+
+⚠️ La interfaz debe ser la correcta.
+Verifícala con:
+
+ip a
+
+(en muchas máquinas de **Oracle Linux es ens33, enp0s3 o eth0).
+
+5️. Iniciar Keepalived
+
+En los dos servidores:
+
+sudo systemctl enable --now keepalived
+
+Verificar:
+
+systemctl status keepalived
+
+6️. Ver la IP virtual
+
+En server1:
+
+ip a
+
+Debe aparecer:
+
+192.168.0.200
+
+7️. Probar desde navegador
+
+En tu PC abre:
+
+http://192.168.0.200
+
+Debe mostrar:
+
+SERVER 1 - ACTIVO
+
+8️. Probar Alta Disponibilidad
+
+Apaga server1:
+
+sudo poweroff
+
+Ahora entra otra vez:
+
+http://192.168.0.200
+
+Ahora verás:
+
+SERVER 2 - ACTIVO
