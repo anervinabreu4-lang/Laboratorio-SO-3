@@ -1,0 +1,280 @@
+_____________________________
+Practica 1 – Cifrado con GPG2
+_____________________________
+
+1. Instalar GPG2
+sudo dnf install gnupg2 -y
+
+Verificar:
+
+gpg2 --version
+2. Crear directorio y archivo
+mkdir practica_cifrado
+cd practica_cifrado
+nano archivo.txt
+
+Escribir dentro:
+
+Este es un archivo secreto para la practica de cifrado
+
+Guardar con:
+
+CTRL + X
+Y
+ENTER
+3. Cifrar archivo
+gpg2 -c archivo.txt
+
+Te pedirá contraseña de cifrado.
+
+Se creará:
+
+archivo.txt.gpg
+4. Intentar leer archivo cifrado
+cat archivo.txt.gpg
+
+Verás símbolos raros porque está cifrado.
+
+5. Descifrar archivo
+gpg2 archivo.txt.gpg
+
+Ingresas la contraseña.
+
+6. Mostrar contenido
+cat archivo.txt
+______________________________________
+Practica 2 – IPTables + Firewall
+_______________________________________
+
+En Oracle Linux 9 el firewall principal es firewalld, pero también puedes usar iptables.
+
+1 Instalar servicios
+HTTP
+sudo dnf install httpd -y
+sudo systemctl start httpd
+sudo systemctl enable httpd
+FTP
+sudo dnf install vsftpd -y
+sudo systemctl start vsftpd
+sudo systemctl enable vsftpd
+SSH (ya viene instalado)
+
+Verificar:
+
+systemctl status sshd
+Ver puertos abiertos
+ss -tuln
+
+Debes ver:
+
+80
+21
+22
+Bloquear puertos con IPTables
+
+Bloquear HTTP
+
+sudo iptables -A INPUT -p tcp --dport 80 -j DROP
+
+Bloquear FTP
+
+sudo iptables -A INPUT -p tcp --dport 21 -j DROP
+
+Bloquear SSH
+
+sudo iptables -A INPUT -p tcp --dport 22 -j DROP
+
+Ver reglas
+
+sudo iptables -L
+Habilitar nuevamente con IPTables
+
+Eliminar reglas
+
+sudo iptables -D INPUT -p tcp --dport 80 -j DROP
+sudo iptables -D INPUT -p tcp --dport 21 -j DROP
+sudo iptables -D INPUT -p tcp --dport 22 -j DROP
+Bloquear con Firewall-cmd
+
+Bloquear servicios
+
+sudo firewall-cmd --permanent --remove-service=http
+sudo firewall-cmd --permanent --remove-service=ftp
+sudo firewall-cmd --permanent --remove-service=ssh
+
+Aplicar cambios
+
+sudo firewall-cmd --reload
+Habilitar nuevamente
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=ftp
+sudo firewall-cmd --permanent --add-service=ssh
+
+Reload
+
+sudo firewall-cmd --reload
+______________________________
+Práctica 3 (IDS Snort 3)
+______________________________
+
+
+1. Introducción y Preparación
+
+sudo su
+date
+
+2. Repositorios y Dependencias
+
+dnf config-manager --set-enabled ol9_codeready_builder
+dnf install -y epel-release
+dnf install -y gcc gcc-c++ make cmake autoconf automake libtool flex bison git wget curl unzip libpcap-devel pcre-devel pcre2-devel libdnet-devel openssl-devel zlib-devel hwloc-devel luajit-devel libuuid-devel pkg-config xz-devel xz
+
+3. Compilación de LibDAQ
+
+cd /tmp
+git clone https://github.com/snort3/libdaq.git
+cd libdaq
+./bootstrap
+./configure
+make && make install
+
+4. Instalación de Snort 3 y Enlace de Librerías
+
+cd /tmp
+wget https://github.com/snort3/snort3/archive/refs/heads/master.zip -O snort3.zip
+unzip snort3.zip
+cd snort3-master
+./configure_cmake.sh --prefix=/usr/local
+cd build
+make -j$(nproc)
+make install
+
+# Registrar las librerías (¡Paso clave!)
+echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf
+echo "/usr/local/lib64" >> /etc/ld.so.conf.d/local.conf
+ldconfig
+
+5. Configuración del Sistema (Usando Nano)
+
+mkdir -p /etc/snort/rules /var/log/snort
+nano /etc/snort/snort.lua
+
+
+Lua
+
+
+daq = { module_dirs = { '/usr/local/lib/daq' } }
+ips = {
+    variables = {
+        nets = { HOME_NET = 'any', EXTERNAL_NET = 'any' }
+    },
+    include = '/etc/snort/rules/local.rules'
+}
+alert_fast = { }
+
+
+
+6. Creación de Reglas Personalizadas
+
+nano /etc/snort/rules/local.rules
+
+📝 Lo que pegas dentro de Nano:
+
+
+
+
+alert icmp any any -> any any (msg:"ICMP Ping detectado"; itype:8; sid:1000001; rev:1;)
+alert tcp any any -> any 21 (msg:"Trafico FTP detectado (21)"; flags:S; sid:1000002; rev:1;)
+alert tcp any any -> any 22 (msg:"Trafico SSH detectado (22)"; flags:S; sid:1000003; rev:1;)
+alert tcp any any -> any 80 (msg:"Trafico HTTP detectado (80)"; flags:S; sid:1000004; rev:1;)
+(Guarda con Ctrl+O, Enter, y sal con Ctrl+X)
+
+7. Validación y Escenario de Prueba Limpio
+
+# Validar la configuración
+
+snort -c /etc/snort/snort.lua -T
+
+# Limpiar el log viejo para que el video quede limpio
+
+truncate -s 0 /var/log/snort/alert_fast.txt
+
+# Iniciar Snort con filtro (en la primera ventana)
+
+snort -q -c /etc/snort/snort.lua -i ens160 -A alert_fast -l /var/log/snort "icmp or port 21 or port 22 or port 80"
+
+ En la segunda ventana de Linux (El Monitor):
+
+Bash
+
+tail -f /var/log/snort/alert_fast.txt
+
+
+
+
+pruebas
+
+
+8. El Ataque y Cierre
+ Lo que dices:
+
+ En el CMD de Windows DOS
+ping 192.168.96.149
+ftp 192.168.96.149
+ssh usuario@192.168.96.149
+curl http://192.168.96.149
+__________________________________________________________
+Práctica 4 L 6- Autenticación de Doble Factor (2FA) en SSH
+___________________________________________________________
+
+
+2. Instalación y Sincronización de Tiempo
+
+
+sudo dnf install epel-release -y
+sudo dnf install google-authenticator qrencode -y
+sudo timedatectl set-timezone America/Santo_Domingo
+sudo timedatectl set-ntp true
+sudo systemctl restart chronyd
+
+3. Generación del Código
+
+Bash
+google-authenticator
+
+
+4. Permisos de Seguridad y SELinux
+
+
+Bash
+sudo chown oracle_20251443:oracle_20251443 ~/.google_authenticator
+sudo chmod 600 ~/.google_authenticator
+sudo setenforce 0
+sudo restorecon -Rv ~/.google_authenticator
+
+5. Configuración del Módulo PAM
+
+sudo nano /etc/pam.d/sshd
+
+auth       substack     password-auth
+auth       required     pam_google_authenticator.so nullok
+auth       include      postlogin
+
+6. Configuración del Servicio SSH
+
+
+Bash
+sudo nano /etc/ssh/sshd_config
+
+UsePAM yes
+PasswordAuthentication yes
+KbdInteractiveAuthentication yes
+ChallengeResponseAuthentication yes
+
+
+7. Reinicio y Prueba Final
+
+sudo systemctl restart sshd
+
+
+ssh oracle_20251443@192.168.65.247
