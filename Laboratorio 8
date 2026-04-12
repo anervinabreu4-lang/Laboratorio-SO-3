@@ -1,0 +1,131 @@
+Anervin Abreu Aybar
+2025-1443
+
+Laboratorio 8: Implementación y Gestión de Contenedores con Docker
+
+________________________________
+Labotario 8 practica 1
+_______________________________
+
+sudo dnf install -y dnf-utils
+sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo dnf install -y docker-ce docker-ce-cli containerd.io
+sudo systemctl enable --now docker
+docker pull nginx
+
+
+sudo mkdir -p /home/website
+sudo nano /home/website/index.html
+
+
+HTML
+<!DOCTYPE html>
+<html>
+<head><title>Practica 1 - Docker</title></head>
+<body style="text-align: center; margin-top: 50px; font-family: Arial;">
+    <h1>Anervin Abreu Aybar</h1>
+    <h2>Matricula: 20251443</h2>
+    <p>Prueba de Volumen Persistente en NGINX - Modulo 8</p>
+</body>
+</html>
+
+ 3: Creación del Contenedor
+:
+
++
+sudo docker run -d -p 8888:80 -v /home/website:/usr/share/nginx/html --name nginx-container nginx
+
+
+4: Configuración del Firewall
+
+
+
+sudo firewall-cmd --add-port=8888/tcp --permanent
+sudo firewall-cmd --reload
+
+ 5: Prueba Final desde Windows
+
+
+
+_____________________________________
+Practica 2 (Portainer)
+-------------------------------------
+
+1. Descarga y Volumen
+
+sudo docker pull portainer/portainer-ce
+sudo docker volume create portainer_data
+
+2. Creación del Contenedor (Mapeo Completo)
+
+
+sudo docker run -d -p 8000:8000 -p 9000:9000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce
+
+3. Firewall y Acceso
+
+sudo firewall-cmd --add-port=9443/tcp --permanent
+sudo firewall-cmd --reload
+
+_____________________________________-________
+PRÁCTICA 3 (WordPress + Docker Compose)
+______________________________________________
+1. Instalación de Docker Compose
+
+sudo dnf install docker-compose-plugin -y
+docker compose version
+
+2. Creación del Directorio del Proyecto
+
+mkdir ~/wordpress-compose
+cd ~/wordpress-compose
+
+3. Creación del Archivo de Configuración (YAML)
+
+nano docker-compose.yml
+
+
+YAML
+services:
+  db:
+    image: mysql:5.7
+    container_name: wordpress_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wp_user
+      MYSQL_PASSWORD: wp_pass
+    volumes:
+      - db_data:/var/lib/mysql
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress_app
+    depends_on:
+      - db
+    ports:
+      - "8081:80"
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wp_user
+      WORDPRESS_DB_PASSWORD: wp_pass
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_data:/var/www/html
+
+volumes:
+  db_data:
+  wp_data:
+
+4. Despliegue de los Contenedores
+
+sudo docker compose up -d
+
+
+5. Configuración del Firewall
+
+sudo firewall-cmd --add-port=8081/tcp --permanent
+sudo firewall-cmd --reload
+
+
