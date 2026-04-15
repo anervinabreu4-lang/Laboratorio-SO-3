@@ -1,0 +1,96 @@
+Laboratorio 7  
+
+___________________________
+PRÁCTICA 1 NFS
+____________________________
+
+
+instalando el servicio NFS y habilitándolo para que inicie con el sistema.
+
+
+sudo dnf install nfs-utils -y
+sudo systemctl enable --now nfs-server
+
+
+
+sudo mkdir /OS3
+sudo touch /OS3/Adrian{1..100}.txt
+sudo chmod -R 777 /OS3
+ls /OS3
+
+
+
+echo "/OS3 *(rw,sync,no_root_squash)" | sudo tee /etc/exports
+sudo exportfs -arv
+
+sudo firewall-cmd --permanent --add-service={nfs,mountd,rpc-bind}
+sudo firewall-cmd --reload
+
+
+
+sudo dnf install nfs-utils -y
+
+
+
+sudo mkdir -p /mnt/nfs_cliente
+sudo mount 192.168.96.124:/OS3 /mnt/nfs_cliente
+ls /mnt/nfs_cliente
+```
+
+
+echo "192.168.96.124:/OS3 /mnt/nfs_cliente nfs defaults,_netdev 0 0" | sudo tee -a /etc/fstab
+
+
+
+sudo reboot
+
+
+ls /mnt/nfs_cliente
+
+
+__________________________________
+PRÁCTICA 2 (Samba Fileserver)
+______________________________________
+
+
+1. Habilitar Servicios y Crear Carpeta/Archivos
+
+
+Bash
+sudo systemctl enable --now smb nmb
+sudo mkdir /Samba
+sudo touch /Samba/adrian{1..100}.txt
+ls /Samba
+
+2. Creación de Usuarios y Permisos
+
+
+Bash
+sudo groupadd smbgroup
+sudo useradd -G smbgroup usuario_samba
+sudo smbpasswd -a usuario_samba
+
+
+
+sudo chown -R root:smbgroup /Samba
+sudo chmod -R 777 /Samba
+
+3. Configurar smb.conf
+
+
+
+echo -e "\n[Compartido_Samba]\npath = /Samba\nvalid users = @smbgroup\nguest ok = no\nwritable = yes\nbrowsable = yes" | sudo tee -a /etc/samba/smb.conf
+
+
+4. Firewall, SELinux y Reinicio
+
+
+sudo setenforce 0
+sudo firewall-cmd --permanent --add-service=samba
+sudo firewall-cmd --reload
+sudo systemctl restart smb nmb
+
+
+
+
+
